@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="id" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard Penyaluran Dana Desa - Kecamatan Barambai</title>
+<meta name="description" content="Dashboard Data Penyaluran Dana Desa Kecamatan Barambai, Kabupaten Barito Kuala">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+<style>
+    :root {
+        --bg-primary: #f8fafc;
+        --bg-secondary: #ffffff;
+        --text-primary: #0f172a;
+        --text-secondary: #475569;
+        --border-color: #e2e8f0;
+        --accent: #0ea5e9;
+        --success: #10b981;
+        --warning: #f59e0b;
+    }
+    
+    .dark {
+        --bg-primary: #0f172a;
+        --bg-secondary: #1e293b;
+        --text-primary: #f1f5f9;
+        --text-secondary: #94a3b8;
+        --border-color: #334155;
+        --accent: #38bdf8;
+    }
+    
+    body {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    .card {
+        background-color: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+    
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .card-filtered {
+        border: 2px solid var(--accent);
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.05) 0%, rgba(14, 165, 233, 0.02) 100%);
+    }
+
+    .btn-primary {
+        background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(14, 165, 233, 0.4);
+    }
+    
+    .btn-secondary {
+        background: var(--bg-secondary);
+        border: 1px solid var(--border-color);
+        transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: var(--bg-primary);
+        border-color: var(--accent);
+        transform: translateY(-1px);
+    }
+    
+    .table-scroll::-webkit-scrollbar {
+        height: 8px;
+        width: 8px;
+    }
+    
+    .table-scroll::-webkit-scrollbar-track {
+        background: var(--bg-primary);
+    }
+    
+    .table-scroll::-webkit-scrollbar-thumb {
+        background: var(--border-color);
+        border-radius: 4px;
+    }
+    
+    .animate-pulse-slow {
+        animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .fade-in {
+        animation: fadeIn 0.5s ease-out forwards;
+    }
+    
+    .tab-active {
+        border-bottom: 3px solid var(--accent);
+        color: var(--accent);
+    }
+    
+    select, input {
+        background-color: var(--bg-secondary);
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
+    
+    th {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+    }
+    
+    th:hover {
+        background-color: var(--bg-primary);
+    }
+
+    td {
+        white-space: nowrap;
+    }
+    
+    thead {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .badge-null {
+        background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        color: #64748b;
+        font-size: 0.75rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 9999px;
+        font-weight: 600;
+    }
+    
+    .dark .badge-null {
+        background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+        color: #94a3b8;
+    }
+    
+    @media (max-width: 768px) {
+        .desktop-table {
+            display: none;
+        }
+        .mobile-cards {
+            display: block;
+        }
+        .bottom-nav {
+            display: flex;
+        }
+        main {
+            padding-bottom: 80px;
+        }
+    }
+    
+    @media (min-width: 769px) {
+        .desktop-table {
+            display: block;
+        }
+        .mobile-cards {
+            display: none;
+        }
+        .bottom-nav {
+            display: none;
+        }
+    }
+    
+    .status-maju {
+        background-color: #dcfce7;
+        color: #166534;
+    }
+    .dark .status-maju {
+        background-color: #14532d;
+        color: #bbf7d0;
+    }
+    
+    .status-berkembang {
+        background-color: #fef3c7;
+        color: #92400e;
+    }
+    .dark .status-berkembang {
+        background-color: #78350f;
+        color: #fde68a;
+    }
+    
+    .status-tertinggal {
+        background-color: #fee2e2;
+        color: #991b1b;
+    }
+    .dark .status-tertinggal {
+        background-color: #7f1d1d;
+        color: #fecaca;
+    }
+</style>
+</head>
+<body>
+    <div id="app" class="min-h-screen">
+        <!-- Header -->
+        <header class="sticky top-0 z-50 backdrop-blur-lg bg-opacity-90 card border-b">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
+                            <i class="fa-solid fa-chart-line text-white text-lg"></i>
+                        </div>
+                        <div>
+                            <h1 class="text-lg sm:text-xl font-bold leading-tight">Dana Desa Barambai</h1>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 hidden sm:block">Kec. Barambai, Barito Kuala</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 sm:gap-3">
+                        <a href="https://tppkecamatanbarambai.blogspot.com/" target="_blank" class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg btn-primary text-white text-sm font-medium">
+                            <i class="fa-solid fa-home"></i>
+                            <span>Beranda</span>
+                        </a>
+                        <button id="darkModeToggle" class="w-10 h-10 rounded-lg card flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                            <i class="fa-solid fa-moon text-lg" id="darkIcon"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile Beranda Button -->
+        <div class="sm:hidden px-4 mt-4">
+            <a href="https://tppkecamatanbarambai.blogspot.com/" target="_blank" class="flex items-center justify-center gap-2 w-full px-4 py-3 rounded-xl btn-primary text-white text-sm font-medium">
+                <i class="fa-solid fa-home"></i>
+                <span>Beranda TPP Barambai</span>
+            </a>
+        </div>
+
+        <!-- Main Content -->
+        <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+            <!-- Loading State -->
+            <div id="loadingState" class="flex flex-col items-center justify-center py-20">
+                <div class="w-16 h-16 border-4 border-sky-200 border-t-sky-500 rounded-full animate-spin"></div>
+                <p class="mt-4 text-slate-500">Memuat data dari Google Sheets...</p>
+            </div>
+
+            <!-- Error State -->
+            <div id="errorState" class="hidden card rounded-2xl p-8 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <i class="fa-solid fa-exclamation-triangle text-2xl text-red-500"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Gagal Memuat Data</h3>
+                <p class="text-slate-500 mb-6" id="errorMessage">Tidak dapat terhubung ke Google Sheets. Pastikan koneksi internet Anda stabil.</p>
+                <button onclick="loadData()" class="btn-primary text-white px-6 py-3 rounded-lg font-medium">
+                    <i class="fa-solid fa-rotate"></i> Coba Lagi
+                </button>
+            </div>
+
+            <!-- Dashboard Content -->
+            <div id="dashboardContent" class="hidden space-y-6">
+                <!-- Last Updated -->
+                <div class="flex flex-wrap justify-between items-center gap-3" id="sectionRekap">
+                    <div>
+                        <h2 class="text-2xl sm:text-3xl font-bold">Dashboard Penyaluran</h2>
+                        <p class="text-sm text-slate-500 mt-1">Data Dana Desa Kecamatan Barambai</p>
+                    </div>
+                    <div class="flex items-center gap-2 text-xs sm:text-sm text-slate-500">
+                        <i class="fa-regular fa-clock"></i>
+                        <span>Terakhir dimuat: <span id="lastUpdated" class="font-medium">-</span></span>
+                    </div>
+                </div>
+
+                <!-- How To Use Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div class="card rounded-xl p-4 flex items-start gap-3 fade-in">
+                        <div class="w-10 h-10 rounded-lg bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center flex-shrink-0">
+                            <span class="text-sky-600 dark:text-sky-400 font-bold text-lg">1</span>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-1">Pilih Tahun</h4>
+                            <p class="text-xs text-slate-500">Filter data berdasarkan tahun anggaran yang ingin dilihat</p>
+                        </div>
+                    </div>
+                    <div class="card rounded-xl p-4 flex items-start gap-3 fade-in" style="animation-delay: 0.1s">
+                        <div class="w-10 h-10 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                            <span class="text-emerald-600 dark:text-emerald-400 font-bold text-lg">2</span>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-1">Pilih Desa</h4>
+                            <p class="text-xs text-slate-500">Pilih desa tertentu atau biarkan kosong untuk semua desa</p>
+                        </div>
+                    </div>
+                    <div class="card rounded-xl p-4 flex items-start gap-3 fade-in" style="animation-delay: 0.2s">
+                        <div class="w-10 h-10 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center flex-shrink-0">
+                            <span class="text-purple-600 dark:text-purple-400 font-bold text-lg">3</span>
+                        </div>
+                        <div>
+                            <h4 class="font-semibold text-sm mb-1">Lihat Data</h4>
+                            <p class="text-xs text-slate-500">Tabel & grafik otomatis update sesuai filter yang dipilih</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                    <div class="card rounded-2xl p-5 sm:p-6 fade-in" id="cardBesaran">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <p class="text-sm text-slate-500 mb-1">Total Besaran Dana</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="totalBesaran">Rp 0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-wallet text-blue-600 dark:text-blue-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t" style="border-color: var(--border-color)">
+                            <p class="text-xs text-slate-500">Pagu Anggaran</p>
+                        </div>
+                    </div>
+
+                    <div class="card rounded-2xl p-5 sm:p-6 fade-in" style="animation-delay: 0.1s" id="cardTahap1">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <p class="text-sm text-slate-500 mb-1">Penyaluran Tahap 1</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="totalTahap1">Rp 0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-arrow-trend-up text-emerald-600 dark:text-emerald-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t" style="border-color: var(--border-color)">
+                            <p class="text-xs text-slate-500">Total disalurkan</p>
+                        </div>
+                    </div>
+
+                    <div class="card rounded-2xl p-5 sm:p-6 fade-in" style="animation-delay: 0.2s" id="cardTahap2">
+                        <div class="flex items-start justify-between">
+                            <div class="flex-1">
+                                <p class="text-sm text-slate-500 mb-1">Penyaluran Tahap 2</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="totalTahap2">Rp 0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-chart-column text-amber-600 dark:text-amber-400 text-xl"></i>
+                            </div>
+                        </div>
+                        <div class="mt-4 pt-4 border-t" style="border-color: var(--border-color)">
+                            <p class="text-xs text-slate-500">Total disalurkan</p>
+                        </div>
+                    </div>
+
+                    <div class="card rounded-2xl p-5 sm:p-6 fade-in" style="animation-delay: 0.3s" id="cardTotal">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <p class="text-sm text-slate-500 mb-1">Total Realisasi</p>
+                                <p class="text-2xl sm:text-3xl font-bold" id="totalPenyaluran">Rp 0</p>
+                            </div>
+                            <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <i class="fa-solid fa-check-circle text-purple-600 dark:text-purple-400 text-xl"></i>
+                            </div>
+                        <div class="h-24 mb-3">
+                            <canvas id="realisasiDonut"></canvas>
+                        </div>
+                        <div class="pt-3 border-t" style="border-color: var(--border-color)">
+                            <div class="flex items-center gap-2">
+                                <div class="flex-1 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                    <div id="realisasiBar" class="h-full bg-gradient-to-r from-purple-500 to-purple-600 transition-all duration-1000" style="width: 0%"></div>
+                                </div>
+                                <span class="text-xs font-bold" id="realisasiPercent">0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Satuan Info -->
+                <div class="card rounded-xl p-3 text-center">
+                    <p class="text-xs text-slate-500">
+                        <i class="fa-solid fa-circle-info mr-1"></i>
+                        Semua angka dalam Rupiah (Rp) | <i class="fa-solid fa-download ml-2 mr-1"></i>Gunakan tombol Download untuk ekspor data
+                    </p>
+                </div>
+
+                <!-- Tabs -->
+                <div class="card rounded-2xl p-1 inline-flex gap-1 flex-wrap" id="sectionDetail">
+                    <button onclick="switchTab('detail')" id="tabDetail" class="tab-active px-4 sm:px-6 py-3 rounded-xl text-sm font-medium transition">
+                        <i class="fa-solid fa-table-list mr-2"></i>Detail Desa
+                    </button>
+                    <button onclick="switchTab('perbandingan')" id="tabPerbandingan" class="px-4 sm:px-6 py-3 rounded-xl text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <i class="fa-solid fa-chart-bar mr-2"></i>Perbandingan
+                    </button>
+                    <button onclick="switchTab('trend')" id="tabTrend" class="hidden px-4 sm:px-6 py-3 rounded-xl text-sm font-medium transition hover:bg-slate-100 dark:hover:bg-slate-700">
+                        <i class="fa-solid fa-chart-line mr-2"></i>Tren Tahunan
+                    </button>
+                </div>
+
+                <!-- Tab Content: Detail -->
+                <div id="contentDetail" class="space-y-6">
+                    <!-- Filters -->
+                    <div class="card rounded-2xl p-4 sm:p-6">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Filter Tahun</label>
+                                <select id="filterTahun" onchange="applyFilters()" class="w-full px-4 py-2.5 rounded-xl border focus:ring-2 focus:ring-sky-500 outline-none transition">
+                                    <option value="">Semua Tahun</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Filter Desa</label>
+                                <select id="filterDesa" onchange="applyFilters()" class="w-full px-4 py-2.5 rounded-xl border focus:ring-2 focus:ring-sky-500 outline-none transition">
+                                    <option value="">Semua Desa</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium mb-2">Cari Desa</label>
+                                <div class="relative">
+                                    <i class="fa-solid fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                                    <input type="text" id="searchDesa" oninput="applyFilters()" placeholder="Ketik nama desa..." class="w-full pl-10 pr-4 py-2.5 rounded-xl border focus:ring-2 focus:ring-sky-500 outline-none transition">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chart -->
+                    <div class="card rounded-2xl p-4 sm:p-6" id="sectionGrafik">
+                        <div class="flex flex-wrap justify-between items-center gap-3 mb-6">
+                            <h3 class="text-lg sm:text-xl font-bold">Grafik Penyaluran per Desa</h3>
+                            <div class="flex gap-2">
+                                <button onclick="changeChartType('tahap1')" id="btnTahap1" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium card border hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                                    Tahap 1
+                                </button>
+                                <button onclick="changeChartType('tahap2')" id="btnTahap2" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium card border hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                                    Tahap 2
+                                </button>
+                                <button onclick="changeChartType('total')" id="btnTotal" class="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium btn-primary text-white">
+                                    Total
+                                </button>
+                            </div>
+                        </div>
+                        <div class="relative h-64 sm:h-80">
+                            <canvas id="desaChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Table with Download Buttons -->
+                    <div class="card rounded-2xl overflow-hidden">
+                        <div class="p-4 sm:p-6 border-b" style="border-color: var(--border-color)">
+                            <div class="flex flex-wrap justify-between items-start gap-4">
+                                <div>
+                                    <h3 class="text-lg sm:text-xl font-bold">Tabel Penyaluran per Desa</h3>
+                                    <p class="text-sm text-slate-500 mt-1">Klik header untuk urutkan. <span class="md:hidden">Geser untuk lihat semua kolom.</span></p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="downloadExcel()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                        <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                                        <span class="hidden sm:inline">Excel</span>
+                                    </button>
+                                    <button onclick="downloadPDF()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                        <i class="fa-solid fa-file-pdf text-red-600"></i>
+                                        <span class="hidden sm:inline">PDF</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Desktop Table -->
+                        <div class="desktop-table overflow-x-auto table-scroll">
+                            <table class="w-full min-w-[1000px]">
+                                <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" onclick="sortTable(0)">
+                                            No <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider" onclick="sortTable(1)">
+                                            Tahun <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider min-w-[150px]" onclick="sortTable(2)">
+                                            Nama Desa <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider min-w-[100px]" onclick="sortTable(3)">
+                                            Status <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]" onclick="sortTable(4)">
+                                            Besaran Dana <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]" onclick="sortTable(5)">
+                                            Tahap 1 <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]" onclick="sortTable(6)">
+                                            Tahap 2 <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]" onclick="sortTable(7)">
+                                            Total <i class="fa-solid fa-sort ml-1 text-xs"></i>
+                                        </th>
+                                        <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider min-w-[100px]">
+                                            Realisasi
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableBody" class="divide-y" style="border-color: var(--border-color)">
+                                </tbody>
+                            </table>
+                        </div>
+                        <!-- Mobile Cards -->
+                        <div class="mobile-cards p-4 space-y-3" id="mobileCards">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Perbandingan -->
+                <div id="contentPerbandingan" class="hidden space-y-6">
+                    <div class="card rounded-2xl p-4 sm:p-6">
+                        <h3 class="text-lg sm:text-xl font-bold mb-6">Perbandingan Besaran Dana vs Total Penyaluran</h3>
+                        <div class="relative h-64 sm:h-96">
+                            <canvas id="perbandinganChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card rounded-2xl p-4 sm:p-6">
+                        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+                            <h3 class="text-lg sm:text-xl font-bold">Rekap Perbandingan per Desa</h3>
+                            <div class="flex gap-2">
+                                <button onclick="downloadExcelPerbandingan()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                                    <span class="hidden sm:inline">Excel</span>
+                                </button>
+                                <button onclick="downloadPDFPerbandingan()" class="btn-secondary px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2">
+                                    <i class="fa-solid fa-file-pdf text-red-600"></i>
+                                    <span class="hidden sm:inline">PDF</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto table-scroll">
+                            <table class="w-full min-w-[700px]">
+                                <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider min-w-[150px]">Desa</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]">Besaran Dana</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]">Total Disalurkan</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider min-w-[140px]">Selisih</th>
+                                        <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider min-w-[100px]">% Realisasi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tablePerbandingan" class="divide-y" style="border-color: var(--border-color)">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tab Content: Tren Tahunan -->
+                <div id="contentTrend" class="hidden space-y-6">
+                    <div class="card rounded-2xl p-4 sm:p-6">
+                        <h3 class="text-lg sm:text-xl font-bold mb-6">Tren Besaran Dana & Realisasi per Tahun</h3>
+                        <div class="relative h-64 sm:h-96">
+                            <canvas id="trendChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card rounded-2xl p-4 sm:p-6">
+                        <h3 class="text-lg sm:text-xl font-bold mb-4">Statistik Tahunan</h3>
+                        <div class="overflow-x-auto table-scroll">
+                            <table class="w-full min-w-[600px]">
+                                <thead class="bg-slate-50 dark:bg-slate-800/50">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider">Tahun</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Besaran Dana</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Tahap 1</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Tahap 2</th>
+                                        <th class="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider">Total Realisasi</th>
+                                        <th class="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider">%</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tableTrend" class="divide-y" style="border-color: var(--border-color)">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="mt-12 py-8 border-t" style="border-color: var(--border-color)">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-2">
+                <p class="text-sm text-slate-600 dark:text-slate-400 font-medium">
+                    <i class="fa-solid fa-database mr-2"></i>Data resmi Siskeudes Kecamatan Barambai
+                </p>
+                <p class="text-xs text-slate-500">
+                    Update otomatis dari Google Sheet | Terakhir sync: <span id="footerSync" class="font-medium">-</span>
+                </p>
+                <p class="text-xs text-slate-400 mt-3">
+                    © 2024 Dashboard Dana Desa Kecamatan Barambai | Dikembangkan untuk TPP Kecamatan Barambai
+                </p>
+            </div>
+        </footer>
+
+        <!-- Bottom Navigation Mobile -->
+        <nav class="bottom-nav fixed bottom-0 left-0 right-0 z-40 bg-opacity-95 backdrop-blur-lg card border-t">
+            <div class="flex justify-around items-center h-16 px-2">
+                <button onclick="scrollToSection('sectionRekap')" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-chart-pie text-lg"></i>
+                    <span class="text-xs font-medium">Rekap</span>
+                </button>
+                <button onclick="scrollToSection('sectionDetail')" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-table-list text-lg"></i>
+                    <span class="text-xs font-medium">Detail</span>
+                </button>
+                <button onclick="scrollToSection('sectionGrafik')" class="flex flex-col items-center gap-1 px-4 py-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition">
+                    <i class="fa-solid fa-chart-bar text-lg"></i>
+                    <span class="text-xs font-medium">Grafik</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+<script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQt2weterJBxBp3uWt7CDLnQ5sKZUjubdJ_c7s27PU0EKD8ZOEh2qb6Le63ee9DNw/pub?gid=1285513522&single=true&output=csv';
+    
+    const DESA_LIST = [
+        'Barambai', 'Sungai Kali', 'Pendalaman', 'Handil Barabai', 'Bagagap',
+        'Barambai Karya Tani', 'Pendalaman Baru', 'Karya Baru',
+        'Barambai Kolam Kiri', 'Barambai Kolam Kanan', 'Barambai Kolam Kiri Dalam'
+    ];
+
+    let allData = [];
+    let filteredData = [];
+    let desaChart = null;
+    let perbandinganChart = null;
+    let trendChart = null;
+    let realisasiDonut = null;
+    let currentChartType = 'total';
+    let sortColumn = -1;
+    let sortDirection = 'asc';
+    let syncTimestamp = null;
+
+    // Dark Mode
+    function initDarkMode() {
+        const isDark = localStorage.getItem('darkMode') === 'true';
+        if (isDark) {
+            document.documentElement.classList.add('dark');
+            document.getElementById('darkIcon').classList.replace('fa-moon', 'fa-sun');
+        }
+    }
+
+    document.getElementById('darkModeToggle').addEventListener('click', () => {
+        document.documentElement.classList.toggle('dark');
+        const isDark = document.documentElement.classList.contains('dark');
+        localStorage.setItem('darkMode', isDark);
+        const icon = document.getElementById('darkIcon');
+        if (isDark) {
+            icon.classList.replace('fa-moon', 'fa-sun');
+        } else {
+            icon.classList.replace('fa-sun', 'fa-moon');
+        }
+        updateCharts();
+    });
+
+    // Parse angka format Indonesia: "1.448.066.819" -> 1448066819
+    function parseIDNumber(str) {
+        if (!str) return 0;
+        const cleaned = String(str).trim().replace(/\./g, '').replace(/,/g, '');
+        const num = parseInt(cleaned, 10);
+        return isNaN(num) ? 0 : num;
+    }
+
+    // Format Rupiah tanpa desimal
+    function formatRupiah(angka) {
+        if (angka === 0 || angka === null || angka === undefined) return '<span class="badge-null">Belum Disalurkan</span>';
+        if (isNaN(angka)) return '<span class="badge-null">Belum Disalurkan</span>';
+        return 'Rp ' + new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits: 0,
+            minimumFractionDigits: 0
+        }).format(Math.round(angka));
+    }
+
+    function formatRupiahPlain(angka) {
+        if (!angka || isNaN(angka)) return 'Rp 0';
+        return 'Rp ' + new Intl.NumberFormat('id-ID', {
+            maximumFractionDigits: 0,
+            minimumFractionDigits: 0
+        }).format(Math.round(angka));
+    }
+
+    // Animated Counter
+    function animateCounter(element, target, duration = 1500) {
+        const start = 0;
+        const increment = target / (duration / 16);
+        let current = start;
+        
+        const timer = setInterval(() => {
+            current += increment;
+            if (current >= target) {
+                element.textContent = formatRupiahPlain(target);
+                clearInterval(timer);
+            } else {
+                element.textContent = formatRupiahPlain(Math.floor(current));
+            }
+        }, 16);
+    }
+
+    // Get Status Badge Class
+    function getStatusClass(status) {
+        const statusLower = status.toLowerCase();
+        if (statusLower.includes('maju')) return 'status-maju';
+        if (statusLower.includes('berkembang')) return 'status-berkembang';
+        if (statusLower.includes('tertinggal')) return 'status-tertinggal';
+        return 'bg-slate-100 dark:bg-slate-700';
+    }
+
+    // Load Data
+    async function loadData() {
+        document.getElementById('loadingState').classList.remove('hidden');
+        document.getElementById('errorState').classList.add('hidden');
+        document.getElementById('dashboardContent').classList.add('hidden');
+
+        try {
+            const response = await fetch(CSV_URL + '&_=' + new Date().getTime());
+            if (!response.ok) throw new Error('Gagal fetch data dari server');
+            
+            const csvText = await response.text();
+            
+            Papa.parse(csvText, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    if (results.errors.length > 0) {
+                        console.warn('CSV parsing warnings:', results.errors);
+                    }
+                    allData = results.data.map(row => ({
+                        tahun: row['Tahun']?.trim() || '',
+                        namaDesa: row['Nama Desa']?.trim() || '',
+                        statusDesa: row['Status Desa']?.trim() || '',
+                        besaranDana: parseIDNumber(row['Besaran Dana Desa']),
+                        tahap1: parseIDNumber(row['Penyaluran Tahap 1']),
+                        tahap2: parseIDNumber(row['Penyaluran Tahap 2']),
+                        total: parseIDNumber(row['Total Penyaluran'])
+                    })).filter(row => row.namaDesa && row.namaDesa !== '' && row.besaranDana > 0);
+                    
+                    filteredData = [...allData];
+                    initFilters();
+                    updateDashboard();
+                    updateCharts();
+                    updatePerbandingan();
+                    checkTrendTab();
+                    
+                    document.getElementById('loadingState').classList.add('hidden');
+                    document.getElementById('dashboardContent').classList.remove('hidden');
+                    
+                    syncTimestamp = new Date();
+                    const formattedTime = syncTimestamp.toLocaleString('id-ID', {
+                        dateStyle: 'medium',
+                        timeStyle: 'short'
+                    });
+                    document.getElementById('lastUpdated').textContent = formattedTime;
+                    document.getElementById('footerSync').textContent = formattedTime;
+                },
+                error: function(error) {
+                    throw new Error('Error parsing CSV: ' + error.message);
+                }
+            });
+        } catch (error) {
+            console.error('Error loading data:', error);
+            document.getElementById('loadingState').classList.add('hidden');
+            document.getElementById('errorState').classList.remove('hidden');
+            document.getElementById('errorMessage').textContent = error.message || 'Tidak dapat terhubung ke Google Sheets. Pastikan koneksi internet Anda stabil dan sheet bersifat publik.';
+        }
+    }
+
+    // Check if multi-year data exists
+    function checkTrendTab() {
+        const tahunSet = [...new Set(allData.map(d => d.tahun))].filter(Boolean);
+        if (tahunSet.length > 1) {
+            document.getElementById('tabTrend').classList.remove('hidden');
+        }
+    }
+
+    // Init Filters
+    function initFilters() {
+        const tahunSet = [...new Set(allData.map(d => d.tahun))].filter(Boolean).sort();
+        const tahunSelect = document.getElementById('filterTahun');
+        tahunSelect.innerHTML = '<option value="">Semua Tahun</option>';
+        tahunSet.forEach(tahun => {
+            tahunSelect.innerHTML += `<option value="${tahun}">${tahun}</option>`;
+        });
+
+        const desaSelect = document.getElementById('filterDesa');
+        desaSelect.innerHTML = '<option value="">Semua Desa</option>';
+        DESA_LIST.forEach(desa => {
+            desaSelect.innerHTML += `<option value="${desa}">${desa}</option>`;
+        });
+    }
+
+    // Apply Filters
+    function applyFilters() {
+        const tahunFilter = document.getElementById('filterTahun').value;
+        const desaFilter = document.getElementById('filterDesa').value;
+        const searchFilter = document.getElementById('searchDesa').value.toLowerCase();
+
+        filteredData = allData.filter(row => {
+            const matchTahun = !tahunFilter || row.tahun === tahunFilter;
+            const matchDesa = !desaFilter || row.namaDesa === desaFilter;
+            const matchSearch = !searchFilter || row.namaDesa.toLowerCase().includes(searchFilter);
+            return matchTahun && matchDesa && matchSearch;
+        });
+
+        // Highlight cards if desa filter active
+        const cards = ['cardBesaran', 'cardTahap1', 'cardTahap2', 'cardTotal'];
+        cards.forEach(cardId => {
+            const card = document.getElementById(cardId);
+            if (desaFilter) {
+                card.classList.add('card-filtered');
+            } else {
+                card.classList.remove('card-filtered');
+            }
+        });
+
+        updateDashboard();
+        updateCharts();
+        updatePerbandingan();
+    }
+
+    // Update Dashboard with Animation
+    function updateDashboard() {
+        const totals = filteredData.reduce((acc, row) => ({
+            besaran: acc.besaran + (row.besaranDana || 0),
+            tahap1: acc.tahap1 + (row.tahap1 || 0),
+            tahap2: acc.tahap2 + (row.tahap2 || 0),
+            total: acc.total + (row.total || 0)
+        }), { besaran: 0, tahap1: 0, tahap2: 0, total: 0 });
+
+        // Animate counters
+        const elBesaran = document.getElementById('totalBesaran');
+        const elTahap1 = document.getElementById('totalTahap1');
+        const elTahap2 = document.getElementById('totalTahap2');
+        const elTotal = document.getElementById('totalPenyaluran');
+        
+        // Reset to 0 before animation
+        elBesaran.textContent = 'Rp 0';
+        elTahap1.textContent = 'Rp 0';
+        elTahap2.textContent = 'Rp 0';
+        elTotal.textContent = 'Rp 0';
+        
+        setTimeout(() => {
+            animateCounter(elBesaran, totals.besaran);
+            animateCounter(elTahap1, totals.tahap1);
+            animateCounter(elTahap2, totals.tahap2);
+            animateCounter(elTotal, totals.total);
+        }, 100);
+
+        const realisasi = totals.besaran > 0 ? (totals.total / totals.besaran * 100) : 0;
+        document.getElementById('realisasiPercent').textContent = realisasi.toFixed(1) + '%';
+        document.getElementById('realisasiBar').style.width = Math.min(realisasi, 100) + '%';
+
+        updateDonutChart(totals);
+        updateTable();
+        updateMobileCards();
+    }
+
+    // Update Donut Chart for Realisasi
+    function updateDonutChart(totals) {
+        const ctx = document.getElementById('realisasiDonut');
+        if (!ctx) return;
+
+        const sisa = Math.max(0, totals.besaran - totals.total);
+        
+        if (realisasiDonut) realisasiDonut.destroy();
+
+        realisasiDonut = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Tahap 1', 'Tahap 2', 'Sisa Dana'],
+                datasets: [{
+                    data: [totals.tahap1, totals.tahap2, sisa],
+                    backgroundColor: [
+                        'rgba(16, 185, 129, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(148, 163, 184, 0.5)'
+                    ],
+                    borderColor: [
+                        'rgb(16, 185, 129)',
+                        'rgb(245, 158, 11)',
+                        'rgb(148, 163, 184)'
+                    ],
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = formatRupiahPlain(context.parsed);
+                                const percentage = totals.besaran > 0 ? ((context.parsed / totals.besaran) * 100).toFixed(1) : 0;
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    }
+
+    // Update Table
+    function updateTable() {
+        const tbody = document.getElementById('tableBody');
+        if (filteredData.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="px-4 py-8 text-center text-slate-500">
+                        <i class="fa-solid fa-inbox text-3xl mb-2"></i>
+                        <p>Tidak ada data yang ditemukan</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = filteredData.map((row, index) => {
+            const realisasi = row.besaranDana > 0 ? (row.total / row.besaranDana * 100) : 0;
+            const statusColor = realisasi >= 100 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                               realisasi >= 75 ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400' :
+                               'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400';
+            
+            return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                    <td class="px-4 py-3 text-sm">${index + 1}</td>
+                    <td class="px-4 py-3 text-sm font-medium">${row.tahun}</td>
+                    <td class="px-4 py-3 text-sm font-medium">${row.namaDesa}</td>
+                    <td class="px-4 py-3 text-sm">
+                        <span class="px-2 py-1 rounded-lg text-xs font-medium ${getStatusClass(row.statusDesa)}">${row.statusDesa || '-'}</span>
+                    </td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(row.besaranDana)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(row.tahap1)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(row.tahap2)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono font-semibold">${formatRupiah(row.total)}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${realisasi.toFixed(1)}%</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Update Mobile Cards
+    function updateMobileCards() {
+        const container = document.getElementById('mobileCards');
+        if (filteredData.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-8 text-slate-500">
+                    <i class="fa-solid fa-inbox text-3xl mb-2"></i>
+                    <p>Tidak ada data yang ditemukan</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = filteredData.map((row, index) => {
+            const realisasi = row.besaranDana > 0 ? (row.total / row.besaranDana * 100) : 0;
+            const statusColor = realisasi >= 100 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' :
+                               realisasi >= 75 ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/30' :
+                               'text-red-600 bg-red-50 dark:bg-red-900/30';
+            
+            return `
+                <div class="card rounded-xl p-4 space-y-3">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <h4 class="font-bold text-lg">${row.namaDesa}</h4>
+                            <p class="text-xs text-slate-500">Tahun ${row.tahun}</p>
+                        </div>
+                        <span class="px-2 py-1 rounded-lg text-xs font-medium ${getStatusClass(row.statusDesa)}">${row.statusDesa || '-'}</span>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                            <p class="text-xs text-slate-500 mb-1">Besaran Dana</p>
+                            <p class="font-semibold">${formatRupiah(row.besaranDana)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 mb-1">Total Realisasi</p>
+                            <p class="font-semibold">${formatRupiah(row.total)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 mb-1">Tahap 1</p>
+                            <p class="font-semibold">${formatRupiah(row.tahap1)}</p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-slate-500 mb-1">Tahap 2</p>
+                            <p class="font-semibold">${formatRupiah(row.tahap2)}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="pt-3 border-t" style="border-color: var(--border-color)">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs text-slate-500">Realisasi</span>
+                            <span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${realisasi.toFixed(1)}%</span>
+                        </div>
+                        <div class="mt-2 h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div class="h-full bg-gradient-to-r from-purple-500 to-purple-600" style="width: ${Math.min(realisasi, 100)}%"></div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    // Sort Table
+    function sortTable(column) {
+        if (sortColumn === column) {
+            sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+            sortColumn = column;
+            sortDirection = 'asc';
+        }
+
+        const keys = ['index', 'tahun', 'namaDesa', 'statusDesa', 'besaranDana', 'tahap1', 'tahap2', 'total'];
+        const key = keys[column];
+
+        filteredData.sort((a, b) => {
+            let aVal = key === 'index' ? 0 : a[key];
+            let bVal = key === 'index' ? 0 : b[key];
+
+            if (typeof aVal === 'string') {
+                return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+            }
+            return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+        });
+
+        updateTable();
+        updateMobileCards();
+    }
+
+    // Chart
+    function changeChartType(type) {
+        currentChartType = type;
+        document.querySelectorAll('[id^="btn"]').forEach(btn => {
+            btn.classList.remove('btn-primary', 'text-white');
+            btn.classList.add('card', 'border');
+        });
+        document.getElementById('btn' + type.charAt(0).toUpperCase() + type.slice(1)).classList.add('btn-primary', 'text-white');
+        document.getElementById('btn' + type.charAt(0).toUpperCase() + type.slice(1)).classList.remove('card', 'border');
+        updateCharts();
+    }
+
+    function updateCharts() {
+        const ctx = document.getElementById('desaChart');
+        if (!ctx) return;
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+        const desaMap = {};
+        filteredData.forEach(row => {
+            if (!desaMap[row.namaDesa]) {
+                desaMap[row.namaDesa] = { tahap1: 0, tahap2: 0, total: 0 };
+            }
+            desaMap[row.namaDesa].tahap1 += row.tahap1;
+            desaMap[row.namaDesa].tahap2 += row.tahap2;
+            desaMap[row.namaDesa].total += row.total;
+        });
+
+        const labels = Object.keys(desaMap);
+        const data = labels.map(desa => desaMap[desa][currentChartType]);
+
+        const colors = {
+            tahap1: { bg: 'rgba(16, 185, 129, 0.8)', border: 'rgb(16, 185, 129)' },
+            tahap2: { bg: 'rgba(245, 158, 11, 0.8)', border: 'rgb(245, 158, 11)' },
+            total: { bg: 'rgba(14, 165, 233, 0.8)', border: 'rgb(14, 165, 233)' }
+        };
+
+        if (desaChart) desaChart.destroy();
+
+        desaChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: currentChartType === 'tahap1' ? 'Tahap 1' : currentChartType === 'tahap2' ? 'Tahap 2' : 'Total Penyaluran',
+                    data: data,
+                    backgroundColor: colors[currentChartType].bg,
+                    borderColor: colors[currentChartType].border,
+                    borderWidth: 2,
+                    borderRadius: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return 'Desa: ' + context[0].label;
+                            },
+                            label: function(context) {
+                                const label = currentChartType === 'tahap1' ? 'Tahap 1' : currentChartType === 'tahap2' ? 'Tahap 2' : 'Total Penyaluran';
+                                return label + ': ' + formatRupiahPlain(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: textColor,
+                            callback: function(value) {
+                                return new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value);
+                            }
+                        },
+                        grid: { color: gridColor }
+                    },
+                    x: {
+                        ticks: { 
+                            color: textColor,
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Perbandingan
+    function updatePerbandingan() {
+        const desaMap = {};
+        filteredData.forEach(row => {
+            if (!desaMap[row.namaDesa]) {
+                desaMap[row.namaDesa] = { besaran: 0, total: 0 };
+            }
+            desaMap[row.namaDesa].besaran += row.besaranDana;
+            desaMap[row.namaDesa].total += row.total;
+        });
+
+        const tbody = document.getElementById('tablePerbandingan');
+        tbody.innerHTML = Object.entries(desaMap).map(([desa, data]) => {
+            const selisih = data.besaran - data.total;
+            const realisasi = data.besaran > 0 ? (data.total / data.besaran * 100) : 0;
+            const statusColor = realisasi >= 100 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 dark:text-emerald-400' :
+                               realisasi >= 75 ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/30 dark:text-amber-400' :
+                               'text-red-600 bg-red-50 dark:bg-red-900/30 dark:text-red-400';
+            
+            return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                    <td class="px-4 py-3 text-sm font-medium">${desa}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(data.besaran)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(data.total)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono ${selisih > 0 ? 'text-amber-600' : 'text-emerald-600'}">${formatRupiah(Math.abs(selisih))}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${realisasi.toFixed(1)}%</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const ctx = document.getElementById('perbandinganChart');
+        if (!ctx) return;
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+        const labels = Object.keys(desaMap);
+        const besaranData = labels.map(desa => desaMap[desa].besaran);
+        const totalData = labels.map(desa => desaMap[desa].total);
+
+        if (perbandinganChart) perbandinganChart.destroy();
+
+        perbandinganChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Besaran Dana',
+                        data: besaranData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                        borderColor: 'rgb(99, 102, 241)',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    },
+                    {
+                        label: 'Total Disalurkan',
+                        data: totalData,
+                        backgroundColor: 'rgba(14, 165, 233, 0.8)',
+                        borderColor: 'rgb(14, 165, 233)',
+                        borderWidth: 2,
+                        borderRadius: 8
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: { color: textColor }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return 'Desa: ' + context[0].label;
+                            },
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatRupiahPlain(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: textColor,
+                            callback: function(value) {
+                                return new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value);
+                            }
+                        },
+                        grid: { color: gridColor }
+                    },
+                    x: {
+                        ticks: { 
+                            color: textColor,
+                            maxRotation: 45,
+                            minRotation: 45
+                        },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Trend Chart
+    function updateTrendChart() {
+        const ctx = document.getElementById('trendChart');
+        if (!ctx) return;
+
+        const isDark = document.documentElement.classList.contains('dark');
+        const textColor = isDark ? '#94a3b8' : '#475569';
+        const gridColor = isDark ? '#334155' : '#e2e8f0';
+
+        const tahunMap = {};
+        allData.forEach(row => {
+            if (!tahunMap[row.tahun]) {
+                tahunMap[row.tahun] = { besaran: 0, tahap1: 0, tahap2: 0, total: 0 };
+            }
+            tahunMap[row.tahun].besaran += row.besaranDana;
+            tahunMap[row.tahun].tahap1 += row.tahap1;
+            tahunMap[row.tahun].tahap2 += row.tahap2;
+            tahunMap[row.tahun].total += row.total;
+        });
+
+        const labels = Object.keys(tahunMap).sort();
+        const besaranData = labels.map(t => tahunMap[t].besaran);
+        const totalData = labels.map(t => tahunMap[t].total);
+
+        if (trendChart) trendChart.destroy();
+
+        trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Besaran Dana',
+                        data: besaranData,
+                        borderColor: 'rgb(99, 102, 241)',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Total Realisasi',
+                        data: totalData,
+                        borderColor: 'rgb(14, 165, 233)',
+                        backgroundColor: 'rgba(14, 165, 233, 0.1)',
+                        borderWidth: 3,
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: true,
+                        labels: { color: textColor }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: function(context) {
+                                return 'Tahun: ' + context[0].label;
+                            },
+                            label: function(context) {
+                                return context.dataset.label + ': ' + formatRupiahPlain(context.parsed.y);
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            color: textColor,
+                            callback: function(value) {
+                                return new Intl.NumberFormat('id-ID', { notation: 'compact' }).format(value);
+                            }
+                        },
+                        grid: { color: gridColor }
+                    },
+                    x: {
+                        ticks: { color: textColor },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+
+        // Update table
+        const tbody = document.getElementById('tableTrend');
+        tbody.innerHTML = labels.map(tahun => {
+            const data = tahunMap[tahun];
+            const realisasi = data.besaran > 0 ? (data.total / data.besaran * 100) : 0;
+            const statusColor = realisasi >= 100 ? 'text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30' :
+                               realisasi >= 75 ? 'text-amber-600 bg-amber-50 dark:bg-amber-900/30' :
+                               'text-red-600 bg-red-50 dark:bg-red-900/30';
+            
+            return `
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition">
+                    <td class="px-4 py-3 text-sm font-medium">${tahun}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(data.besaran)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(data.tahap1)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono">${formatRupiah(data.tahap2)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-mono font-semibold">${formatRupiah(data.total)}</td>
+                    <td class="px-4 py-3 text-center">
+                        <span class="px-3 py-1 rounded-full text-xs font-bold ${statusColor}">${realisasi.toFixed(1)}%</span>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    // Download Functions
+    function downloadExcel() {
+        const data = filteredData.map((row, index) => ({
+            'No': index + 1,
+            'Tahun': row.tahun,
+            'Nama Desa': row.namaDesa,
+            'Status Desa': row.statusDesa,
+            'Besaran Dana': row.besaranDana || 0,
+            'Tahap 1': row.tahap1 || 0,
+            'Tahap 2': row.tahap2 || 0,
+            'Total Penyaluran': row.total || 0,
+            'Realisasi (%)': row.besaranDana > 0 ? ((row.total / row.besaranDana) * 100).toFixed(2) : 0
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Dana Desa Barambai');
+        
+        const fileName = `Dana_Desa_Barambai_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    }
+
+    function downloadPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+
+        doc.setFontSize(16);
+        doc.text('Dashboard Penyaluran Dana Desa - Kecamatan Barambai', 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tanggal Export: ${new Date().toLocaleString('id-ID')}`, 14, 22);
+
+        const tableData = filteredData.map((row, index) => [
+            index + 1,
+            row.tahun,
+            row.namaDesa,
+            row.statusDesa || '-',
+            formatRupiahPlain(row.besaranDana),
+            formatRupiahPlain(row.tahap1),
+            formatRupiahPlain(row.tahap2),
+            formatRupiahPlain(row.total),
+            row.besaranDana > 0 ? ((row.total / row.besaranDana) * 100).toFixed(1) + '%' : '0%'
+        ]);
+
+        doc.autoTable({
+            startY: 28,
+            head: [['No', 'Tahun', 'Nama Desa', 'Status', 'Besaran Dana', 'Tahap 1', 'Tahap 2', 'Total', 'Realisasi']],
+            body: tableData,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [14, 165, 233] },
+            alternateRowStyles: { fillColor: [248, 250, 252] }
+        });
+
+        const fileName = `Dana_Desa_Barambai_${new Date().toISOString().split('T')[0]}.pdf`;
+        doc.save(fileName);
+    }
+
+    function downloadExcelPerbandingan() {
+        const desaMap = {};
+        filteredData.forEach(row => {
+            if (!desaMap[row.namaDesa]) {
+                desaMap[row.namaDesa] = { besaran: 0, total: 0 };
+            }
+            desaMap[row.namaDesa].besaran += row.besaranDana;
+            desaMap[row.namaDesa].total += row.total;
+        });
+
+        const data = Object.entries(desaMap).map(([desa, d], index) => ({
+            'No': index + 1,
+            'Desa': desa,
+            'Besaran Dana': d.besaran,
+            'Total Disalurkan': d.total,
+            'Selisih': d.besaran - d.total,
+            'Realisasi (%)': d.besaran > 0 ? ((d.total / d.besaran) * 100).toFixed(2) : 0
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Perbandingan');
+        
+        const fileName = `Perbandingan_Dana_Desa_${new Date().toISOString().split('T')[0]}.xlsx`;
+        XLSX.writeFile(wb, fileName);
+    }
+
+    function downloadPDFPerbandingan() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4');
+
+        doc.setFontSize(16);
+        doc.text('Perbandingan Penyaluran Dana Desa - Kecamatan Barambai', 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Tanggal Export: ${new Date().toLocaleString('id-ID')}`, 14, 22);
+
+        const desaMap = {};
+        filteredData.forEach(row => {
+            if (!desaMap[row.namaDesa]) {
+                desaMap[row.namaDesa] = { besaran: 0, total: 0 };
+            }
+            desaMap[row.namaDesa].besaran += row.besaranDana;
+            desaMap[row.namaDesa].total += row.total;
+        });
+
+        const tableData = Object.entries(desaMap).map(([desa, d], index) => [
+            index + 1,
+            desa,
+            formatRupiahPlain(d.besaran),
+            formatRupiahPlain(d.total),
+            formatRupiahPlain(Math.abs(d.besaran - d.total)),
+            d.besaran > 0 ? ((d.total / d.besaran) * 100).toFixed(1) + '%' : '0%'
+        ]);
+
+        doc.autoTable({
+            startY: 28,
+            head: [['No', 'Desa', 'Besaran Dana', 'Total Disalurkan', 'Selisih', 'Realisasi']],
+            body: tableData,
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [14, 165, 233] },
+            alternateRowStyles: { fillColor: [248, 250, 252] }
+        });
+
+        const fileName = `Perbandingan_Dana_Desa_${new Date().toISOString().split('T')[0]}.pdf`;
+        doc.save(fileName);
+    }
+
+    // Scroll to section
+    function scrollToSection(sectionId) {
+        const element = document.getElementById(sectionId);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+    }
+
+    // Tab Switch
+    function switchTab(tab) {
+        document.getElementById('contentDetail').classList.add('hidden');
+        document.getElementById('contentPerbandingan').classList.add('hidden');
+        document.getElementById('contentTrend').classList.add('hidden');
+        
+        document.getElementById('tabDetail').classList.remove('tab-active');
+        document.getElementById('tabPerbandingan').classList.remove('tab-active');
+        document.getElementById('tabTrend').classList.remove('tab-active');
+
+        if (tab === 'detail') {
+            document.getElementById('contentDetail').classList.remove('hidden');
+            document.getElementById('tabDetail').classList.add('tab-active');
+        } else if (tab === 'perbandingan') {
+            document.getElementById('contentPerbandingan').classList.remove('hidden');
+            document.getElementById('tabPerbandingan').classList.add('tab-active');
+            updatePerbandingan();
+        } else if (tab === 'trend') {
+            document.getElementById('contentTrend').classList.remove('hidden');
+            document.getElementById('tabTrend').classList.add('tab-active');
+            updateTrendChart();
+        }
+    }
+
+    // Init
+    initDarkMode();
+    loadData();
+
+    // Auto refresh every 5 minutes
+    setInterval(loadData, 300000);
+</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+<script>(function(){document.addEventListener("click",function(e){var a=e.target.closest("[data-product-id]");if(!a)return;e.preventDefault();var pid=a.getAttribute("data-product-id");if(pid)parent.postMessage({type:"ecto-artifact-link-click",productId:pid},"*")})})();</script>
+</body>
+</html>
